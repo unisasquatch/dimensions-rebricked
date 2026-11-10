@@ -1,0 +1,32 @@
+# Game data and dumps stay out of git
+Source Packages/
+extracted/
+/ghidra/
+/tools/
+build/
+*.pkg
+*.elf
+*.bin
+*.self
+*.sprx
+run/
+__pycache__/
+build-linux/
+
+# NVIDIA DLSS SDK (1.6 GB clone, v310.9.16): keep only what the build uses (headers, the loader library, the runtime
+# DLL and the licence).
+port/third_party/dlss/*
+!port/third_party/dlss/include/
+!port/third_party/dlss/LICENSE.txt
+!port/third_party/dlss/lib/
+port/third_party/dlss/lib/*
+!port/third_party/dlss/lib/Windows_x86_64/
+port/third_party/dlss/lib/Windows_x86_64/*
+!port/third_party/dlss/lib/Windows_x86_64/x64/
+!port/third_party/dlss/lib/Windows_x86_64/rel/
+port/third_party/dlss/lib/Windows_x86_64/x64/*
+!port/third_party/dlss/lib/Windows_x86_64/x64/nvsdk_ngx_d.lib
+port/third_party/dlss/lib/Windows_x86_64/rel/*
+!port/third_party/dlss/lib/Windows_x86_64/rel/nvngx_dlss.dll
+port/build_skip/
+port/tools/ldpkg/keys.inc

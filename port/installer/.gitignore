@@ -1,0 +1,5 @@
+build/
+stage/
+output/
+icon.png
+output-fresh/
