@@ -16,7 +16,7 @@ system libraries: graphics (GCN shaders translated to Vulkan), audio, input, sav
 - Windows 10/11 x64 with a Vulkan 1.3 GPU (or Linux / SteamOS).
 - A Toy Pad is optional: the port has a virtual Toy Pad (in the pause menu, and as a web page on your local
   network), supports a real Toy Pad over USB, and can take figures from harrysof's
-  [LegoToypad](https://github.com/harrysof/LegoToypad).
+  [LegoToypad](https://github.com/harrysof/LegoToypad). See the [Toy Pad guide](docs/TOY_PAD.md).
 
 ## Features
 
@@ -24,7 +24,7 @@ system libraries: graphics (GCN shaders translated to Vulkan), audio, input, sav
 - FXAA / TAA, VSync modes, borderless and exclusive fullscreen, aspect ratio options.
 - Up to 4-player split screen, keyboard and controller support with matching button icons.
 - Settings live in the game's own Options menu (Display Settings, Gameplay).
-- Save transfer to and from shadPS4, Xenia, Cemu and RPCS3.
+- Save transfer to and from shadPS4, Xenia, Cemu and RPCS3: see the [save transfer guide](docs/SAVE_TRANSFER.md).
 
 ## Building
 
@@ -40,6 +40,10 @@ the DLSS modes fall back to FSR 2.
 The installer asks for your game's `.pkg` files (the 1.24 update; the base game 1.00 is recommended), a package keys
 file, and optionally a folder of add-on pack `.pkg` files. More add-ons can be added later from
 Start > Dimensions Rebricked > Add DLC packs. Setup is always a fresh install: it carries no saves or settings.
+
+Guides:
+- [Transferring saves](docs/SAVE_TRANSFER.md) from shadPS4, Xenia, Cemu or RPCS3, and back.
+- [Toy Pad options](docs/TOY_PAD.md): the on-screen Toy Pad, the LAN Toy Pad page, a real Toy Pad, and LegoToypad.
 
 ## Contributing
 
