@@ -63,7 +63,7 @@ bool Device::Init(SDL_Window* window) {
     dlss::AddInstanceExtensions(exts);  // NVIDIA DLSS (only those this system has)
 
     VkApplicationInfo app{VK_STRUCTURE_TYPE_APPLICATION_INFO};
-    app.pApplicationName = "LEGO Dimensions port";
+    app.pApplicationName = "Dimensions Rebricked";
     app.apiVersion = VK_API_VERSION_1_3;
     VkInstanceCreateInfo ici{VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO};
     ici.pApplicationInfo = &app;

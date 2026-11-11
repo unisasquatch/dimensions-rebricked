@@ -29,8 +29,8 @@ entry="$apps/lego-dimensions.desktop"
 cat > "$entry" <<EOF
 [Desktop Entry]
 Type=Application
-Name=LEGO Dimensions
-Comment=LEGO Dimensions (PC port)
+Name=Dimensions Rebricked
+Comment=LEGO Dimensions for PC (unofficial)
 Exec="$root/lego-dimensions.sh"
 Path=$root
 Icon=$root/icon.png
@@ -42,7 +42,7 @@ if [ -x "$root/save-transfer.sh" ]; then
   cat > "$apps/lego-dimensions-save-transfer.desktop" <<EOF
 [Desktop Entry]
 Type=Application
-Name=LEGO Dimensions save transfer
+Name=Dimensions Rebricked save transfer
 Comment=Bring saves in from shadPS4, Xenia, Cemu or RPCS3, or send them out
 Exec="$root/save-transfer.sh"
 Path=$root
@@ -73,6 +73,6 @@ if [ $steam = 1 ]; then
     steam "steam://addnonsteamgame/$(python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' "$entry" 2>/dev/null || echo "$entry")" >/dev/null 2>&1 &
     say "asked Steam to add it as a non-Steam game (restart Steam to see it; if it isn't there: Games > Add a Non-Steam Game)"
   else
-    say "no Steam shortcut: Steam isn't running here. In Steam: Games > Add a Non-Steam Game > LEGO Dimensions"
+    say "no Steam shortcut: Steam isn't running here. In Steam: Games > Add a Non-Steam Game > Dimensions Rebricked"
   fi
 fi

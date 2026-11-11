@@ -748,7 +748,7 @@ int main(int argc, char** argv) {
             const uint64_t frames = hle::VideoOutFlipCount();
             const double fps = now > title_ms ? double(frames - title_frames) * 1000.0 / double(now - title_ms) : 0.0;
             char title[128];
-            std::snprintf(title, sizeof title, "LEGO Dimensions  |  %02llu:%02llu.%01llu  |  frame %llu  |  %.0f fps",
+            std::snprintf(title, sizeof title, "Dimensions Rebricked  |  %02llu:%02llu.%01llu  |  frame %llu  |  %.0f fps",
                           (unsigned long long)(now / 60000), (unsigned long long)(now / 1000 % 60),
                           (unsigned long long)(now / 100 % 10), (unsigned long long)frames, fps);
             std::string full = title;
@@ -838,7 +838,7 @@ int main(int argc, char** argv) {
             const uint64_t frames = hle::VideoOutFlipCount();
             const double fps = now > title_ms ? double(frames - title_frames) * 1000.0 / double(now - title_ms) : 0.0;
             char title[128];
-            std::snprintf(title, sizeof title, "LEGO Dimensions  |  %02llu:%02llu.%01llu  |  frame %llu  |  %.0f fps",
+            std::snprintf(title, sizeof title, "Dimensions Rebricked  |  %02llu:%02llu.%01llu  |  frame %llu  |  %.0f fps",
                           (unsigned long long)(now / 60000), (unsigned long long)(now / 1000 % 60),
                           (unsigned long long)(now / 100 % 10), (unsigned long long)frames, fps);
             std::string full = title;

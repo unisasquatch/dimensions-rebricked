@@ -64,7 +64,7 @@ void CreateWindowOnMain(void*) {
     // the window exists; LDPORT_FULLSCREEN=1 asks for borderless.
     if (std::getenv("LDPORT_FULLSCREEN") && !port::Get().display.load())
         port::Get().display = uint32_t(port::DisplayMode::Borderless);
-    g_display.window = SDL_CreateWindow("LEGO Dimensions", 1280, 720, SDL_WINDOW_RESIZABLE | SDL_WINDOW_VULKAN);
+    g_display.window = SDL_CreateWindow("Dimensions Rebricked", 1280, 720, SDL_WINDOW_RESIZABLE | SDL_WINDOW_VULKAN);
     ApplyDisplayMode(port::Get().display.load());
     // Render resolution (decided after the window: SDL starts its video system there). The game draws
     // at 1080p; on a 2160p (4K) display render at twice that unless LDPORT_SCALE says otherwise

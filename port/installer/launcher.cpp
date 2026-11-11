@@ -1,4 +1,4 @@
-// LEGO Dimensions.exe: starts ldport.exe from an installed layout without a console window.
+// Dimensions Rebricked.exe: starts ldport.exe from an installed layout without a console window.
 //
 //   <install>\ldport.exe, SDL3.dll, imports.tsv, fsr1\
 //   <install>\data          (settings, saves, Toy Pad figures, shader cache, ldport.log)
@@ -10,10 +10,10 @@
 // The log goes to data\ldport.log (the previous run's to ldport.prev.log). The LAN Toy Pad page follows its setting
 // (Options > Gameplay); any extra arguments are passed through to ldport.exe.
 //
-// "LEGO Dimensions.exe" --create-shortcuts [--no-desktop] [--quiet] makes the Start Menu folder and desktop shortcut
+// "Dimensions Rebricked.exe" --create-shortcuts [--no-desktop] [--quiet] makes the Start Menu folder and desktop shortcut
 // again (the same ones the installer makes, for this user), e.g. after they were deleted or the folder was moved.
 //
-// "LEGO Dimensions.exe" --add-dlc asks for a folder of DLC (add-on pack) .pkg files and unpacks them into the game.
+// "Dimensions Rebricked.exe" --add-dlc asks for a folder of DLC (add-on pack) .pkg files and unpacks them into the game.
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <shellapi.h>
@@ -26,7 +26,7 @@
 static std::wstring Dir(const std::wstring& path) { return path.substr(0, path.find_last_of(L"\\/")); }
 static bool Exists(const std::wstring& p) { return GetFileAttributesW(p.c_str()) != INVALID_FILE_ATTRIBUTES; }
 static int Fail(const std::wstring& msg) {
-    MessageBoxW(nullptr, msg.c_str(), L"LEGO Dimensions", MB_ICONERROR | MB_OK);
+    MessageBoxW(nullptr, msg.c_str(), L"Dimensions Rebricked", MB_ICONERROR | MB_OK);
     return 1;
 }
 static std::wstring Quote(const std::wstring& s) { return L"\"" + s + L"\""; }
@@ -76,13 +76,13 @@ static bool MakeLink(const std::wstring& lnk, const std::wstring& target, const 
 static int CreateShortcuts(const std::wstring& root, const std::wstring& self, bool desktop, bool quiet) {
     CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
     const std::wstring programs = KnownFolder(FOLDERID_Programs), desk = KnownFolder(FOLDERID_Desktop);
-    const std::wstring group = programs + L"\\LEGO Dimensions";
+    const std::wstring group = programs + L"\\Dimensions Rebricked";
     CreateDirectoryW(group.c_str(), nullptr);
     std::wstring made, failed;
     auto link = [&](const std::wstring& lnk, const std::wstring& target, const std::wstring& dir, const std::wstring& icon) {
         (MakeLink(lnk, target, dir, icon) ? made : failed) += L"\n  " + lnk;
     };
-    link(group + L"\\LEGO Dimensions.lnk", self, root, self);
+    link(group + L"\\Dimensions Rebricked.lnk", self, root, self);
     link(group + L"\\Game folder (saves and log).lnk", root + L"\\data", L"", L"");
     if (Exists(root + L"\\LegoToypad\\LegoToypad.exe"))
         link(group + L"\\LegoToypad.lnk", root + L"\\LegoToypad\\LegoToypad.exe", root + L"\\LegoToypad", L"");
@@ -103,7 +103,7 @@ static int CreateShortcuts(const std::wstring& root, const std::wstring& self, b
         (ok ? made : failed) += L"\n  " + lnk;
     }
     if (Exists(root + L"\\unins000.exe"))
-        link(group + L"\\Uninstall LEGO Dimensions.lnk", root + L"\\unins000.exe", root, L"");
+        link(group + L"\\Uninstall Dimensions Rebricked.lnk", root + L"\\unins000.exe", root, L"");
     {
         const std::wstring url = group + L"\\Virtual Toy Pad (while the game runs).url";
         HANDLE f = CreateFileW(url.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
@@ -113,11 +113,11 @@ static int CreateShortcuts(const std::wstring& root, const std::wstring& self, b
         if (f != INVALID_HANDLE_VALUE) CloseHandle(f);
         (ok ? made : failed) += L"\n  " + url;
     }
-    if (desktop) link(desk + L"\\LEGO Dimensions.lnk", self, root, self);
+    if (desktop) link(desk + L"\\Dimensions Rebricked.lnk", self, root, self);
     SHChangeNotify(SHCNE_UPDATEDIR, SHCNF_PATHW, group.c_str(), nullptr);
     CoUninitialize();
     if (!failed.empty()) return Fail(L"These shortcuts could not be made:" + failed);
-    if (!quiet) MessageBoxW(nullptr, (L"Shortcuts made:" + made).c_str(), L"LEGO Dimensions", MB_ICONINFORMATION | MB_OK);
+    if (!quiet) MessageBoxW(nullptr, (L"Shortcuts made:" + made).c_str(), L"Dimensions Rebricked", MB_ICONINFORMATION | MB_OK);
     return 0;
 }
 

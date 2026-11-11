@@ -1,11 +1,11 @@
-; Inno Setup script for the LEGO Dimensions PC port. Build with make_installer.cmd (stages the files first).
+; Inno Setup script for Dimensions Rebricked. Build with make_installer.cmd (stages the files first).
 ; setup.exe carries only the port (~70 MB). The game data (~50 GB, from the PS4 packages) is copied in at install time
 ; from an unpacked folder you pick, or left where it is; or, with "I have PKG files", setup unpacks the .pkg files
 ; themselves into {app}\game with ldpkg.exe (port\tools\ldpkg). PKG files need the package keys file (the two
 ; fake-package RSA keys, never shipped with setup), kept as {app}\data\pkgkeys.bin so "Add DLC packs" (the launcher's
 ; --add-dlc) can unpack more add-on packs later. A separate folder of DLC .pkg files is optional.
 
-#define AppName "LEGO Dimensions"
+#define AppName "Dimensions Rebricked"
 #define AppVersion GetEnv("LDPORT_VERSION")
 #if AppVersion == ""
   #define AppVersion "1.0"
@@ -21,16 +21,16 @@
 AppId={{6B0E8C1F-2D1A-4E57-9C3B-5D1E0A7F4C21}
 AppName={#AppName}
 AppVersion={#AppVersion}
-AppPublisher=LEGO Dimensions PC port
+AppPublisher=Dimensions Rebricked
 DefaultDirName={autopf}\{#AppName}
 DefaultGroupName={#AppName}
 DisableProgramGroupPage=yes
 ; Per-user install: the game writes saves, settings and its shader cache next to itself.
 PrivilegesRequired=lowest
 OutputDir=output
-OutputBaseFilename=LEGO-Dimensions-Setup
+OutputBaseFilename=Dimensions-Rebricked-Setup
 SetupIconFile=icon.ico
-UninstallDisplayIcon={app}\LEGO Dimensions.exe
+UninstallDisplayIcon={app}\{#AppName}.exe
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern
@@ -44,7 +44,7 @@ ExtraDiskSpaceRequired=0
 [Tasks]
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Shortcuts:"
 Name: "importshadps4"; Description: "Import LEGO Dimensions saves from the shadPS4 emulator (the saves here are backed up first)"; GroupDescription: "Saves:"; Flags: unchecked
-Name: "legotoypad"; Description: "Download the LegoToypad app by harrysof (about 33 MB, from GitHub) and use it as the Toy Pad"; GroupDescription: "Toy Pad (the game's own virtual Toy Pad stays available; Options > Display Settings > Toy Pad switches):"; Flags: unchecked
+Name: "legotoypad"; Description: "Download the LegoToypad app by harrysof (about 33 MB, from GitHub) and use it as the Toy Pad"; GroupDescription: "Toy Pad (the game's own virtual Toy Pad stays available; Options > Gameplay > Toy Pad switches):"; Flags: unchecked
 Name: "legotoypad\start"; Description: "Start LegoToypad with the game"
 
 [Files]
@@ -62,6 +62,11 @@ Source: "{code:GameSrc}\addcont\*"; DestDir: "{app}\game\addcont"; Flags: extern
 [InstallDelete]
 ; Switching between copied and left-in-place game data.
 Type: files; Name: "{app}\game.txt"
+; Version 1.0's launcher and shortcuts, from before the rename to Dimensions Rebricked (same AppId, so an update
+; installs over it).
+Type: files; Name: "{app}\LEGO Dimensions.exe"
+Type: filesandordirs; Name: "{userprograms}\LEGO Dimensions"
+Type: files; Name: "{userdesktop}\LEGO Dimensions.lnk"
 
 [UninstallDelete]
 Type: files; Name: "{app}\game.txt"
@@ -77,17 +82,17 @@ Type: filesandordirs; Name: "{app}\data\shadercache"
 Type: filesandordirs; Name: "{app}\LegoToypad"
 
 [Icons]
-Name: "{group}\{#AppName}"; Filename: "{app}\LEGO Dimensions.exe"; WorkingDir: "{app}"
+Name: "{group}\{#AppName}"; Filename: "{app}\{#AppName}.exe"; WorkingDir: "{app}"
 Name: "{group}\Virtual Toy Pad (while the game runs)"; Filename: "http://127.0.0.1:8642/"
-Name: "{group}\Add DLC packs"; Filename: "{app}\LEGO Dimensions.exe"; Parameters: "--add-dlc"; WorkingDir: "{app}"
+Name: "{group}\Add DLC packs"; Filename: "{app}\{#AppName}.exe"; Parameters: "--add-dlc"; WorkingDir: "{app}"
 Name: "{group}\Game folder (saves and log)"; Filename: "{app}\data"
 Name: "{group}\Transfer saves (shadPS4, Xenia, Cemu, RPCS3)"; Filename: "{app}\ldport.exe"; Parameters: "--save-transfer --data ""{app}\data"""; WorkingDir: "{app}"
 Name: "{group}\LegoToypad"; Filename: "{app}\LegoToypad\LegoToypad.exe"; WorkingDir: "{app}\LegoToypad"; Tasks: legotoypad
 Name: "{group}\Uninstall {#AppName}"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\{#AppName}"; Filename: "{app}\LEGO Dimensions.exe"; WorkingDir: "{app}"; Tasks: desktopicon
+Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppName}.exe"; WorkingDir: "{app}"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\LEGO Dimensions.exe"; Description: "Play {#AppName} now"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#AppName}.exe"; Description: "Play {#AppName} now"; Flags: nowait postinstall skipifsilent
 
 [Code]
 var
@@ -232,7 +237,7 @@ begin
     'Add DLC packs now?',
     'If you have DLC (add-on pack) .pkg files for LEGO Dimensions, pick the folder that holds them; leave this empty ' +
     'to skip. Add-on packs in the game''s own .pkg folder are added either way. More can be added after setup with ' +
-    'Start > LEGO Dimensions > Add DLC packs.',
+    'Start > Dimensions Rebricked > Add DLC packs.',
     False, '');
   DlcPage.Add('DLC folder (optional):');
   DlcPage.Values[0] := ExpandConstant('{param:DLC|}');
@@ -475,7 +480,7 @@ begin
     Result := Result + NewLine + NewLine + 'Package keys:' + NewLine + Space + KeysSrc;
     if DlcSrc <> '' then Result := Result + NewLine + NewLine + 'DLC (add-on packs) from:' + NewLine + Space + DlcSrc
     else Result := Result + NewLine + NewLine + 'DLC: only add-on packs in the game''s .pkg folder (more can be ' +
-      'added later with Start > LEGO Dimensions > Add DLC packs)';
+      'added later with Start > Dimensions Rebricked > Add DLC packs)';
   end;
   if WizardIsTaskSelected('importshadps4') then
     Result := Result + NewLine + NewLine + 'shadPS4 saves imported from:' + NewLine + Space + ShadSrc;

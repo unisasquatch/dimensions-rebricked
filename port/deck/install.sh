@@ -54,7 +54,7 @@ done
 say() { echo "== $*"; }
 if [ -z "$gamedata" ] && [ -z "$pkgs" ]; then
   if command -v kdialog >/dev/null && [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]; then
-    gamedata="$(kdialog --title "LEGO Dimensions: game data folder (holds elf, CUSA01176, ...) or the folder with the .pkg files" --getexistingdirectory "$HOME")" || exit 1
+    gamedata="$(kdialog --title "Dimensions Rebricked: game data folder (holds elf, CUSA01176, ...) or the folder with the .pkg files" --getexistingdirectory "$HOME")" || exit 1
   else
     read -r -p "Game data folder (holds elf/, CUSA01176/ ...) or folder with the .pkg files: " gamedata
   fi
@@ -66,7 +66,7 @@ if [ -n "$pkgs" ]; then
   pkgs="${pkgs%/}"
   if [ -z "$keys" ]; then
     if command -v kdialog >/dev/null && [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]; then
-      keys="$(kdialog --title "LEGO Dimensions: the package keys file" --getopenfilename "$HOME")" || exit 1
+      keys="$(kdialog --title "Dimensions Rebricked: the package keys file" --getopenfilename "$HOME")" || exit 1
     else
       read -r -p "Package keys file (the two fake-package RSA keys): " keys
     fi
@@ -98,7 +98,7 @@ if [ -z "$shadps4" ] && [ $ask_shadps4 = 1 ]; then
     [ -d "$cand" ] && find "$cand" -maxdepth 7 \( -name GAME01 -o -name V2GAME01 \) -print -quit 2>/dev/null | grep -q . || continue
     q="Import the LEGO Dimensions saves from shadPS4 ($cand)? The saves already installed are backed up first."
     if command -v kdialog >/dev/null && [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]; then
-      kdialog --title "LEGO Dimensions" --yesno "$q" && shadps4="$cand"
+      kdialog --title "Dimensions Rebricked" --yesno "$q" && shadps4="$cand"
     elif [ -t 0 ]; then
       read -r -p "$q [y/N] " yn
       case "$yn" in [yY]*) shadps4="$cand" ;; esac
@@ -121,7 +121,7 @@ if [ "$legotoypad" = ask ]; then
   legotoypad=0
   q="Download the LegoToypad app by harrysof (about 33 MB, from GitHub) and use it as the Toy Pad? The game's own virtual Toy Pad stays available in Options > Display Settings > Toy Pad."
   if command -v kdialog >/dev/null && [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]; then
-    kdialog --title "LEGO Dimensions" --yesno "$q" && legotoypad=1
+    kdialog --title "Dimensions Rebricked" --yesno "$q" && legotoypad=1
   elif [ -t 0 ]; then
     read -r -p "$q [y/N] " yn
     case "$yn" in [yY]*) legotoypad=1 ;; esac

@@ -39,7 +39,7 @@ the DLSS modes fall back to FSR 2.
 
 The installer asks for your game's `.pkg` files (the 1.24 update; the base game 1.00 is recommended), a package keys
 file, and optionally a folder of add-on pack `.pkg` files. More add-ons can be added later from
-Start > LEGO Dimensions > Add DLC packs. Setup is always a fresh install: it carries no saves or settings.
+Start > Dimensions Rebricked > Add DLC packs. Setup is always a fresh install: it carries no saves or settings.
 
 ## Contributing
 

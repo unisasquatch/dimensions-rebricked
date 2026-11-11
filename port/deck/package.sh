@@ -1,11 +1,11 @@
 #!/bin/bash
-# Assembles the Steam Deck package (after build_linux.sh): port/deck/out/LEGO-Dimensions-Deck/ and a .tar.gz of it.
+# Assembles the Steam Deck package (after build_linux.sh): port/deck/out/Dimensions-Rebricked-Deck/ and a .tar.gz of it.
 # A fresh install: no saves, Toy Pad figures or keys from the PC it is built on (settings-deck.ini is the default).
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 port="$(dirname "$here")"
 build="$port/build-linux"
-out="$here/out/LEGO-Dimensions-Deck"
+out="$here/out/Dimensions-Rebricked-Deck"
 rm -rf "$out"
 mkdir -p "$out/data"
 cp "$build/ldport/ldport" "$out/"
@@ -21,5 +21,5 @@ cp "$port/../docs/imports.tsv" "$out/"
 cp -r "$port/third_party/fsr1" "$out/fsr1"
 cp "$here/settings-deck.ini" "$out/data/settings.ini"
 chmod +x "$out/ldport" "$out/lego-dimensions.sh" "$out/install.sh" "$out/save-transfer.sh" "$out/ldpkg" "$out/create-shortcuts.sh"
-tar -C "$here/out" -czf "$here/out/LEGO-Dimensions-Deck.tar.gz" LEGO-Dimensions-Deck
-echo "packaged $here/out/LEGO-Dimensions-Deck.tar.gz"
+tar -C "$here/out" -czf "$here/out/Dimensions-Rebricked-Deck.tar.gz" Dimensions-Rebricked-Deck
+echo "packaged $here/out/Dimensions-Rebricked-Deck.tar.gz"

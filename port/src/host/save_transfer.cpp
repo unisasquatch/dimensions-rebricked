@@ -678,7 +678,7 @@ fs::path PickPortSlot(const fs::path& data, bool as_target) {
 }
 
 int Interactive(const fs::path& data) {
-    std::printf("LEGO Dimensions save transfer\n");
+    std::printf("Dimensions Rebricked save transfer\n");
     std::printf("The source save is never changed; what the destination held is backed up to\n  %s\n\n",
                 U8(data / "save-transfer-backups").c_str());
     std::printf("  1) Bring a save INTO this port\n  2) Send a save from this port OUT to an emulator\n");

@@ -69,7 +69,7 @@ void Load() {
 
 void Save() {
     std::ofstream out(Path());
-    out << "# LEGO Dimensions port settings (also in the game's Options menu)\n"
+    out << "# Dimensions Rebricked settings (also in the game's Options menu)\n"
         << "resolution=" << Get().resolution.load() << "  # 0 automatic, 1 1080p, 2 1440p, 3 4K, 4 6K\n"
         << "scale=" << Get().scale.load() << "  # upscaler: 0 off, 4-7 FSR 1, 8-11 FSR 2, 12-15 DLSS, 16 DLAA\n"
         << "aspect=" << Get().aspect.load() << "\n"

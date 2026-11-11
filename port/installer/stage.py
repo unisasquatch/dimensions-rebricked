@@ -1,6 +1,6 @@
 # Gathers everything the Windows installer ships into installer/stage: the port's own programs and their runtime
 # libraries, nothing else.
-#   stage/app:  ldport.exe, LEGO Dimensions.exe, ldpkg.exe, SDL3.dll, nvngx_dlss.dll (+ its licence), VC++ runtime,
+#   stage/app:  ldport.exe, Dimensions Rebricked.exe, ldpkg.exe, SDL3.dll, nvngx_dlss.dll (+ its licence), VC++ runtime,
 #               imports.tsv, fsr1/
 #
 # A shared setup.exe is a fresh install: it never carries anything from the PC it is built on (saves, Toy Pad
@@ -31,7 +31,7 @@ copy(os.path.join(build, "SDL3.dll"), os.path.join(app, "SDL3.dll"))
 # NVIDIA DLSS runtime (NVIDIA RTX SDKs licence, shipped with its licence text).
 copy(os.path.join(build, "nvngx_dlss.dll"), os.path.join(app, "nvngx_dlss.dll"))
 copy(os.path.join(project, "port", "third_party", "dlss", "LICENSE.txt"), os.path.join(app, "NVIDIA_RTX_SDK_LICENSE.txt"))
-copy(os.path.join(here, "build", "LEGO Dimensions.exe"), os.path.join(app, "LEGO Dimensions.exe"))
+copy(os.path.join(here, "build", "Dimensions Rebricked.exe"), os.path.join(app, "Dimensions Rebricked.exe"))
 copy(os.path.join(here, "build", "ldpkg.exe"), os.path.join(app, "ldpkg.exe"))
 copy(os.path.join(project, "docs", "imports.tsv"), os.path.join(app, "imports.tsv"))
 for f in os.listdir(os.path.join(build, "fsr1")):
