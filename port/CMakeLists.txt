@@ -5,6 +5,11 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+if(MSVC)
+  # The exe names its .pdb by file name only, not by the full build path (which holds the builder's user folder).
+  add_link_options(/PDBALTPATH:%_PDB%)
+endif()
+
 find_package(Vulkan REQUIRED COMPONENTS shaderc_combined)
 if(WIN32)
   find_package(SDL3 CONFIG REQUIRED PATHS "${CMAKE_SOURCE_DIR}/../tools/SDL3-3.4.18/cmake")
