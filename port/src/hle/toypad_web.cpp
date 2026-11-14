@@ -55,7 +55,7 @@ namespace toypad {
 namespace {
 
 // Figure IDs as stored on the tags (characters). The page adds the vehicles and gadgets, and an icon for
-// each figure, from <data>/toypad/icons (made from the game's own files by port/tools/toypad_icons.py).
+// each figure, from <data>/toypad/icons (made from the game's own files at startup, button_icons.cpp's BuildFigures).
 struct Named { uint32_t id; const char* name; };
 constexpr Named kFigures[] = {
     {1, "Batman"}, {2, "Gandalf"}, {3, "Wyldstyle"}, {4, "Aquaman"}, {5, "Bad Cop"}, {6, "Bane"},

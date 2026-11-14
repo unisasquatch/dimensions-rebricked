@@ -14,6 +14,9 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <regex>
+#include <set>
+#include <sstream>
 #include <string>
 #include <thread>
 
@@ -341,7 +344,10 @@ bool ReadNewTable(const std::vector<uint8_t>& d, Archive& a) {
         full[i] = base.empty() ? name : base + "/" + name;
         if (!file || file >= files || name.find('.') == std::string::npos) continue;
         const std::string path = Lower(full[i]);
-        if (path.rfind("framework-data/gui/buttons/", 0) != 0) continue;
+        // The button sheets, and the Toy Pad figures' list and portraits (see BuildFigures).
+        const bool figures = path.size() >= 20 && (path.compare(path.size() - 20, 20, "chars/collection.txt") == 0 ||
+                                                   path.find("icons/characters/charactericontpage_dx11") != std::string::npos);
+        if (path.rfind("framework-data/gui/buttons/", 0) != 0 && !figures) continue;
         const uint8_t* e = d.data() + table_at + uint64_t(file) * 16;
         FileRef f;
         f.dat = a.dat;
@@ -919,9 +925,344 @@ void WritePng(const fs::path& path, uint32_t w, uint32_t h, const std::vector<ui
     chunk("IEND", {});
 }
 
+// --- the Toy Pad figures: list, portraits and the picker's atlas (what port/tools/toypad_icons.py made) ---
+//
+// <data>/toypad/icons/figures.json lists every figure the game knows (each chars/collection.txt's
+// "collect <name> portal_model_id <id>" lines) with a readable name, its franchise and the add-on package it needs;
+// <id>.png is its portrait from the game's character icon pages (for the LAN Toy Pad page), and atlas.bin holds
+// all the portraits in one RGBA image for the in-game picker. Made from the player's own game files the first time
+// the game runs (and again when kFiguresVersion changes).
+
+constexpr int kFiguresVersion = 1;
+constexpr uint32_t kIconHeight = 128;
+std::atomic<int> g_figures_generation{0};
+
+// TT's obfuscated text: "ZIPX", u32 size, u32 size, then RC4 keyed with the size's 4 little-endian bytes.
+std::vector<uint8_t> UnZipx(const std::vector<uint8_t>& d) {
+    if (d.size() < 12 || std::memcmp(d.data(), "ZIPX", 4) != 0) return d;
+    const uint32_t n = std::min<uint32_t>(Le32(d.data() + 4), uint32_t(d.size() - 12));
+    const uint8_t key[4] = {d[4], d[5], d[6], d[7]};
+    uint8_t box[256];
+    for (int i = 0; i < 256; ++i) box[i] = uint8_t(i);
+    for (int i = 0, j = 0; i < 256; ++i) {
+        j = (j + box[i] + key[i & 3]) & 255;
+        std::swap(box[i], box[j]);
+    }
+    std::vector<uint8_t> out(n);
+    for (uint32_t k = 0, i = 0, j = 0; k < n; ++k) {
+        i = (i + 1) & 255;
+        j = (j + box[i]) & 255;
+        std::swap(box[i], box[j]);
+        out[k] = d[12 + k] ^ box[(box[i] + box[j]) & 255];
+    }
+    return out;
+}
+
+// Year 2 add-on packages by the franchise whose world each adds (their own collection.txt lists only NPCs).
+// Ghostbusters is split: the 2016 figures need the 2016 story pack.
+const std::map<std::string, std::string> kPackByFranchise = {
+    {"Adventure Time", "OPUSADVENTURETIM"}, {"The A-Team", "OPUSATEAM0000001"},
+    {"The LEGO Batman Movie", "OPUSBATMANSTORY1"}, {"Beetlejuice", "OPUSBEETLEJUICE1"}, {"E.T.", "OPUSET0000000001"},
+    {"Fantastic Beasts", "OPUSFANTASTICBEA"}, {"The Goonies", "OPUSGOONIES00001"}, {"Gremlins", "OPUSGREMLINS0001"},
+    {"Harry Potter", "OPUSHARRYPOTTER1"}, {"Knight Rider", "OPUSKNIGHTRIDER1"},
+    {"LEGO City: Undercover", "OPUSLEGOCITY0001"}, {"Mission: Impossible", "OPUSMISSIONIMPOS"},
+    {"The Powerpuff Girls", "OPUSPOWERPUFF001"}, {"Sonic the Hedgehog", "OPUSSONIC0000001"},
+    {"Teen Titans Go!", "OPUSTEENTITANS01"}};
+
+std::string FigurePack(uint32_t id, const std::string& franchise) {
+    if (franchise == "Ghostbusters") return (id == 47 || id == 1197 || id == 1198 || id == 1199) ? "OPUSGHOSTBUSTERS" : "";
+    const auto it = kPackByFranchise.find(franchise);
+    return it == kPackByFranchise.end() ? "" : it->second;
+}
+
+// Each character's franchise; vehicles and gadgets take their owner's (or a name keyword's).
+const std::map<uint32_t, std::string>& Franchises() {
+    static const std::map<uint32_t, std::string> m = [] {
+        const std::pair<const char*, std::vector<uint32_t>> table[] = {
+            {"DC Comics", {1, 4, 6, 12, 20, 23, 40, 43, 45, 46, 769}}, {"The Lord of the Rings", {2, 18, 19, 29}},
+            {"The LEGO Movie", {3, 5, 8, 16, 41}}, {"The Simpsons", {7, 21, 27}}, {"Portal 2", {9}},
+            {"Ninjago", {10, 22, 24, 30, 32, 37, 44}}, {"Legends of Chima", {11, 17, 28}}, {"Doctor Who", {13, 15}},
+            {"Back to the Future", {14, 31}}, {"Jurassic World", {25, 33}}, {"Midway Arcade", {26}},
+            {"Ghostbusters", {34, 35, 39, 47}}, {"Scooby-Doo", {36, 38}}, {"The Wizard of Oz", {42}},
+            {"Adventure Time", {48, 50, 51, 63}}, {"Mission: Impossible", {49}}, {"Harry Potter", {52, 53, 67}},
+            {"Knight Rider", {54}}, {"The A-Team", {55}}, {"Fantastic Beasts", {56, 62}}, {"Sonic the Hedgehog", {57}},
+            {"Gremlins", {59, 60}}, {"E.T.", {61}}, {"The LEGO Batman Movie", {64, 65, 69}}, {"The Goonies", {66}},
+            {"LEGO City: Undercover", {68}}, {"Teen Titans Go!", {70, 71, 77}}, {"Beetlejuice", {72}},
+            {"The Powerpuff Girls", {74, 75, 76}}};
+        std::map<uint32_t, std::string> r;
+        for (const auto& [name, ids] : table)
+            for (const uint32_t id : ids) r[id] = name;
+        return r;
+    }();
+    return m;
+}
+const std::pair<const char*, const char*> kVehicleHints[] = {
+    {"lbm", "The LEGO Batman Movie"}, {"tardis", "Doctor Who"}, {"k9", "Doctor Who"}, {"dalek", "Doctor Who"},
+    {"portal", "Portal 2"}, {"turret", "Portal 2"}, {"ninjago", "Ninjago"}, {"jurassic", "Jurassic World"},
+    {"ecto", "Ghostbusters"}, {"ghost", "Ghostbusters"}, {"pirateship", "The Goonies"},
+    {"swoopingevil", "Fantastic Beasts"}, {"niffler", "Fantastic Beasts"}, {"lumpy", "Adventure Time"},
+    {"marceline", "Adventure Time"}, {"bmo", "Adventure Time"}, {"jakemob", "Adventure Time"}};
+
+void FixSpelling(std::string& s) {
+    static const std::pair<const char*, const char*> fixes[] = {{"Delorian", "DeLorean"}, {"Jurrasic", "Jurassic"},
+                                                                {"Gimlie", "Gimli's"},     {"Scoobie", "Scooby"},
+                                                                {"Coptor", "Copter"},      {"Balista", "Ballista"}};
+    for (const auto& [from, to] : fixes)
+        for (size_t at; (at = s.find(from)) != std::string::npos;) s.replace(at, std::strlen(from), to);
+}
+
+// "GandalfTheGrey" -> "Gandalf The Grey"; underscores become spaces; all-lower-case words get a capital.
+std::string Words(const std::string& raw) {
+    std::string spaced;
+    for (size_t i = 0; i < raw.size(); ++i) {
+        const char c = raw[i];
+        if (c == '_') {
+            spaced += ' ';
+            continue;
+        }
+        if (i > 0 && std::isupper(static_cast<unsigned char>(c)) && std::islower(static_cast<unsigned char>(raw[i - 1])))
+            spaced += ' ';
+        spaced += c;
+    }
+    std::string out;
+    std::istringstream words(spaced);
+    for (std::string w; words >> w;) {
+        bool lower = false, upper = false;
+        for (const char c : w) {
+            lower = lower || std::islower(static_cast<unsigned char>(c));
+            upper = upper || std::isupper(static_cast<unsigned char>(c));
+        }
+        if (lower && !upper) w[0] = char(std::toupper(static_cast<unsigned char>(w[0])));
+        out += (out.empty() ? "" : " ") + w;
+    }
+    FixSpelling(out);
+    return out;
+}
+
+// Vehicles and gadgets ("TI_BadCopCar_1", three builds each) take the comment's name ("///< Bad Cop Car - Model 1").
+std::string NiceName(const std::string& raw, const std::string& comment) {
+    static const std::regex vehicle(R"(^ti_(.+?)_(\d)$)", std::regex::icase);
+    static const std::regex model(R"(///<\s*(.+?)\s*-\s*Model)");
+    std::smatch m;
+    if (std::regex_match(raw, m, vehicle)) {
+        const std::string base = m[1], build = m[2];
+        std::smatch c;
+        std::string name = std::regex_search(comment, c, model) ? std::string(c[1]) : Words(base);
+        while (!name.empty() && name.back() == ' ') name.pop_back();
+        FixSpelling(name);
+        return name + " (build " + build + ")";
+    }
+    std::string r = raw;
+    if (Lower(r).rfind("teentitansgo_", 0) == 0) r = r.substr(13);
+    return Words(r);
+}
+
+std::string JsonString(const std::string& s) {
+    std::string o = "\"";
+    for (const char c : s) {
+        if (c == '"' || c == '\\') o += '\\';
+        if (static_cast<unsigned char>(c) < 0x20) continue;
+        o += c;
+    }
+    return o + "\"";
+}
+
+struct Icon {
+    uint32_t w = 0, h = 0;
+    std::vector<uint8_t> rgba;
+};
+
+// A character icon page (.tsh): 56-byte records, each with a "1TXD" marker at +32 and the name hash at +52, and its
+// rectangle (u0, v0, u1, v1, v up, big-endian floats) at +0; the first marker locates them. Then a DXT1/DXT5 DDS.
+bool ParseIconPage(const std::vector<uint8_t>& d, const std::map<uint32_t, std::string>& names, Sheet& sheet) {
+    const uint8_t kTxd[4] = {'1', 'T', 'X', 'D'}, kDds[4] = {'D', 'D', 'S', ' '};
+    const auto txd = std::search(d.begin(), d.end(), kTxd, kTxd + 4);
+    const auto dds_at = std::search(d.begin(), d.end(), kDds, kDds + 4);
+    if (txd == d.end() || dds_at == d.end()) return false;
+    const size_t t = size_t(txd - d.begin()), dds = size_t(dds_at - d.begin());
+    if (t < 32 || dds + 128 > d.size()) return false;
+    sheet.h = Le32(d.data() + dds + 12);
+    sheet.w = Le32(d.data() + dds + 16);
+    const bool bc3 = std::memcmp(d.data() + dds + 84, "DXT5", 4) == 0;
+    if (!bc3 && std::memcmp(d.data() + dds + 84, "DXT1", 4) != 0) return false;
+    const size_t bytes = size_t((sheet.w + 3) / 4) * ((sheet.h + 3) / 4) * (bc3 ? 16 : 8);
+    if (dds + 128 + bytes > d.size()) return false;
+    DecodeDxt(d.data() + dds + 128, sheet.w, sheet.h, bc3, sheet.rgba);
+    for (size_t i = 0; i < names.size(); ++i) {
+        const size_t marker = t + 56 * i;
+        if (marker + 24 > dds || std::memcmp(d.data() + marker, "1TXD", 4) != 0) break;
+        const uint8_t* r = d.data() + marker - 32;
+        const float u0 = BeFloat(r), v0 = BeFloat(r + 4), u1 = BeFloat(r + 8), v1 = BeFloat(r + 12);
+        const auto name = names.find(Be32(d.data() + marker + 20));
+        if (name == names.end() || !(0 <= u0 && u0 < u1 && u1 <= 1 && 0 <= v0 && v0 < v1 && v1 <= 1)) continue;
+        Rect rect;
+        rect.x0 = u0 * float(sheet.w);
+        rect.x1 = u1 * float(sheet.w);
+        rect.y0 = (1.0f - v1) * float(sheet.h);
+        rect.y1 = (1.0f - v0) * float(sheet.h);
+        sheet.sprites[name->second] = rect;
+    }
+    return !sheet.sprites.empty();
+}
+
+void BuildFigures(const std::vector<Archive>& archives) {
+    const auto t0 = std::chrono::steady_clock::now();
+    // The same folder the Toy Pad reads (toypad.cpp: <data>/toypad), named the same way.
+    const fs::path out = fs::path((hle::DataRoot().empty() ? std::string("run") : hle::DataRoot()) + "/toypad/icons");
+    const fs::path stamp = out / "made-by-port.txt";
+    std::error_code ec;
+    if (!std::getenv("LDPORT_REBUILD_FIGURES") && fs::exists(out / "figures.json", ec) && fs::exists(out / "atlas.bin", ec) &&
+        ReadFile(stamp) == std::vector<uint8_t>{uint8_t('0' + kFiguresVersion)})
+        return;  // made already
+
+    // Every path the archives name; the update's copy of a file wins (OpenArchives puts its archives first).
+    std::set<std::string> collections, pages;
+    for (const Archive& a : archives) {
+        for (const auto& [path, ref] : a.named) {
+            if (path.size() >= 20 && path.compare(path.size() - 20, 20, "chars/collection.txt") == 0) collections.insert(path);
+            const std::string tsh = "icons/characters/charactericontpage_dx11.tsh";
+            if (path.size() >= tsh.size() && path.compare(path.size() - tsh.size(), tsh.size(), tsh) == 0) pages.insert(path);
+        }
+    }
+    struct Figure { std::string raw, name, owner; };
+    std::map<uint32_t, Figure> figures;
+    static const std::regex collect(R"re(^\s*collect\s+"([^"]+)"\s+portal_model_id\s+(\d+)(.*)$)re", std::regex::icase);
+    for (const std::string& path : collections) {
+        const std::vector<uint8_t> data = UnZipx(Extract(archives, path));
+        std::istringstream lines(std::string(data.begin(), data.end()));
+        for (std::string line; std::getline(lines, line);) {
+            if (!line.empty() && line.back() == '\r') line.pop_back();
+            std::smatch m;
+            if (!std::regex_match(line, m, collect)) continue;
+            const uint32_t id = uint32_t(std::stoul(m[2]));
+            if (figures.count(id)) continue;
+            const std::string raw = m[1], comment = m[3];
+            std::string owner;  // "can_be_upgraded_by <name>", unless commented out ("/can_be...")
+            for (size_t at = comment.find("can_be_upgraded_by"); at != std::string::npos;
+                 at = comment.find("can_be_upgraded_by", at + 1)) {
+                if (at > 0 && comment[at - 1] == '/') continue;
+                size_t p = at + 18;
+                while (p < comment.size() && std::isspace(static_cast<unsigned char>(comment[p]))) ++p;
+                size_t e = p;
+                while (e < comment.size() && (std::isalnum(static_cast<unsigned char>(comment[e])) || comment[e] == '_')) ++e;
+                if (e > p) {
+                    owner = Lower(comment.substr(p, e - p));
+                    break;
+                }
+            }
+            figures[id] = {raw, NiceName(raw, comment), owner};
+        }
+    }
+    if (figures.empty()) {
+        std::fprintf(stderr, "[icons] no Toy Pad figure list in the game's files: the picker shows names only\n");
+        return;
+    }
+    std::vector<Sheet> sheets;
+    for (const std::string& page : pages) {
+        std::map<uint32_t, std::string> names;
+        const std::string contents = page.substr(0, page.size() - 4) + "_contents.txt";
+        ReadNames(Extract(archives, contents), names);
+        Sheet s;
+        if (!names.empty() && ParseIconPage(Extract(archives, page), names, s)) sheets.push_back(std::move(s));
+    }
+
+    std::map<std::string, uint32_t> by_raw;
+    for (const auto& [id, f] : figures)
+        if (id < 1000) by_raw[Lower(f.raw)] = id;
+    fs::create_directories(out, ec);
+    std::map<uint32_t, Icon> icons;
+    std::string listing = "[\n";
+    int with_icon = 0, from_packs = 0;
+    for (const auto& [id, f] : figures) {
+        const std::string key = Lower(f.raw);
+        std::string franchise;
+        if (const auto it = Franchises().find(id); it != Franchises().end()) franchise = it->second;
+        for (const auto& [hint, name] : kVehicleHints)
+            if (franchise.empty() && key.find(hint) != std::string::npos) franchise = name;
+        if (franchise.empty())
+            if (const auto o = by_raw.find(f.owner); o != by_raw.end())
+                if (const auto it = Franchises().find(o->second); it != Franchises().end()) franchise = it->second;
+        if (franchise.empty()) franchise = "Other";
+
+        bool has_icon = false;
+        for (const Sheet& s : sheets) {
+            const auto sp = s.sprites.find(key);
+            if (sp == s.sprites.end()) continue;
+            const Rect& r = sp->second;
+            const int x0 = int(std::lround(r.x0)), y0 = int(std::lround(r.y0));
+            const int w = int(std::lround(r.w())), h = int(std::lround(r.h()));
+            if (w <= 0 || h <= 0) continue;
+            // Nearest-neighbour down to kIconHeight rows (never up).
+            Icon icon;
+            icon.h = uint32_t(h) > kIconHeight ? kIconHeight : uint32_t(h);
+            icon.w = uint32_t(h) > kIconHeight ? std::max(1u, uint32_t(std::lround(double(w) * kIconHeight / h))) : uint32_t(w);
+            icon.rgba.assign(size_t(icon.w) * icon.h * 4, 0);
+            for (uint32_t y = 0; y < icon.h; ++y) {
+                for (uint32_t x = 0; x < icon.w; ++x) {
+                    const int sx = x0 + int(uint64_t(x) * w / icon.w), sy = y0 + int(uint64_t(y) * h / icon.h);
+                    if (sx < 0 || sy < 0 || uint32_t(sx) >= s.w || uint32_t(sy) >= s.h) continue;
+                    std::memcpy(&icon.rgba[(size_t(y) * icon.w + x) * 4], &s.rgba[(size_t(sy) * s.w + sx) * 4], 4);
+                }
+            }
+            WritePng(out / (std::to_string(id) + ".png"), icon.w, icon.h, icon.rgba);
+            icons[id] = std::move(icon);
+            has_icon = true;
+            ++with_icon;
+            break;
+        }
+        const std::string pack = FigurePack(id, franchise);
+        from_packs += !pack.empty();
+        // One figure per line: the web server reads it line by line.
+        listing += (listing.size() > 2 ? ",\n" : "") + std::string("{\"id\": ") + std::to_string(id) +
+                   ", \"name\": " + JsonString(f.name) + ", \"kind\": \"" + (id < 1000 ? "character" : "vehicle") +
+                   "\", \"icon\": " + (has_icon ? "true" : "false") + ", \"franchise\": " + JsonString(franchise) +
+                   ", \"pack\": " + JsonString(pack) + "}";
+    }
+    listing += "\n]\n";
+
+    // atlas.bin (little-endian): "TPAT", u32 version 1, u32 width, u32 height, u32 count,
+    // count x {u32 id, u16 x, u16 y, u16 w, u16 h}, then width * height RGBA bytes.
+    constexpr uint32_t kCell = kIconHeight, kColumns = 32;
+    const uint32_t rows = uint32_t((icons.size() + kColumns - 1) / kColumns);
+    const uint32_t aw = kCell * kColumns, ah = kCell * std::max(1u, rows);
+    std::vector<uint8_t> pixels(size_t(aw) * ah * 4, 0), entries;
+    const auto put = [&](uint32_t v, int bytes) {
+        for (int b = 0; b < bytes; ++b) entries.push_back(uint8_t(v >> (8 * b)));
+    };
+    uint32_t k = 0;
+    for (const auto& [id, icon] : icons) {
+        const uint32_t w = std::min(icon.w, kCell), h = std::min(icon.h, kCell);
+        const uint32_t x0 = (k % kColumns) * kCell + (kCell - w) / 2, y0 = (k / kColumns) * kCell + (kCell - h) / 2;
+        for (uint32_t y = 0; y < h; ++y)
+            std::memcpy(&pixels[(size_t(y0 + y) * aw + x0) * 4], &icon.rgba[size_t(y) * icon.w * 4], size_t(w) * 4);
+        put(id, 4), put(x0, 2), put(y0, 2), put(w, 2), put(h, 2);
+        ++k;
+    }
+    {
+        std::ofstream a(out / "atlas.bin", std::ios::binary);
+        const uint32_t head[5] = {0x54415054u /* "TPAT" */, 1, aw, ah, uint32_t(icons.size())};
+        a.write(reinterpret_cast<const char*>(head), sizeof head);
+        a.write(reinterpret_cast<const char*>(entries.data()), std::streamsize(entries.size()));
+        a.write(reinterpret_cast<const char*>(pixels.data()), std::streamsize(pixels.size()));
+    }
+    std::ofstream(out / "figures.json", std::ios::binary) << listing;
+    std::ofstream(stamp, std::ios::binary) << char('0' + kFiguresVersion);
+    g_figures_generation.fetch_add(1, std::memory_order_release);
+    const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - t0).count();
+    std::fprintf(stderr, "[icons] Toy Pad figures: %zu, %d with portraits (%zu icon pages), %d from add-on packs, in %lld ms\n",
+                 figures.size(), with_icon, sheets.size(), from_packs, static_cast<long long>(ms));
+}
+
+void BuildButtons(const std::vector<Archive>& archives, std::chrono::steady_clock::time_point t0);
+
 void Build() {
     const auto t0 = std::chrono::steady_clock::now();
     const std::vector<Archive> archives = OpenArchives();
+    BuildButtons(archives, t0);
+    BuildFigures(archives);
+}
+
+void BuildButtons(const std::vector<Archive>& archives, std::chrono::steady_clock::time_point t0) {
     const std::string dir = "framework-data/gui/buttons/";
     std::map<uint32_t, std::string> names;
     for (const char* p : {"ps4", "xboxone", "360", "wiiu"})
@@ -1020,6 +1361,8 @@ void Prepare() {
     static std::once_flag once;
     std::call_once(once, [] { std::thread(Build).detach(); });
 }
+
+int FiguresGeneration() { return g_figures_generation.load(std::memory_order_acquire); }
 
 void NoteInput(int set) {
     if (set < 0 || set >= kSetCount) return;

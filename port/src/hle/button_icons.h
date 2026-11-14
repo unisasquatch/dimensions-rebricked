@@ -18,8 +18,13 @@ namespace icons {
 enum Set : int { kPlayStation = 0, kXbox = 1, kXbox360 = 2, kNintendo = 3, kKeyboard = 4, kSetCount = 5 };
 const char* SetName(int set);
 
-// Starts building the sheets on a background thread (once; cheap to call again).
+// Starts building the sheets on a background thread (once; cheap to call again). The same thread then makes the
+// Toy Pad figures' list, portraits and picker atlas in <data>/toypad/icons from the game's files, when they aren't
+// there yet.
 void Prepare();
+
+// Goes up each time the Toy Pad figure files are made this run: the picker reloads them when it changes.
+int FiguresGeneration();
 
 // The pad layer: the player just used this kind of device (any player, buttons or a stick pushed well over).
 void NoteInput(int set);

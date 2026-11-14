@@ -1069,12 +1069,27 @@ struct Renderer::Impl {
     struct PendingPipe { VkShaderModule vmod, pmod; PipeDesc pd; };
     std::unordered_map<uint64_t, PendingPipe> building;     // pipeline keys queued or building
     std::atomic<uint64_t> async_done{0}, async_wait_ns{0}, deferred_draws{0};
+    // Pipelines a draw waited for this frame (GPU thread). At each flip their jobs move ahead of the rest: on a slow
+    // driver (100-300 ms a pipeline) a new area queues hundreds, and what is on screen now shouldn't wait behind
+    // jobs for things seen seconds ago.
+    std::unordered_set<uint64_t> wanted_pipes;
+    size_t queued_peak = 0;
+    void PrioritiseWantedJobs() {
+        std::lock_guard lock(job_mutex);
+        queued_peak = std::max(queued_peak, jobs.size());
+        if (!wanted_pipes.empty() && !jobs.empty())  // module jobs stay first: a pipeline job needs its modules
+            std::stable_partition(jobs.begin(), jobs.end(),
+                                  [&](const ShaderJob& j) { return !j.pipe_key || wanted_pipes.count(j.pipe_key); });
+        wanted_pipes.clear();
+    }
     void QueueShaderJob(ShaderJob job) {
         job.queued = std::chrono::steady_clock::now();
         std::lock_guard lock(job_mutex);
         if (!job_workers_started) {
             job_workers_started = true;
-            const unsigned n = std::max(2u, std::min(4u, std::thread::hardware_concurrency() / 4));
+            // Half the CPU's threads (2 to 8): a fresh install compiles hundreds of shaders on the first visit to
+            // each area, and the 3D objects that use them aren't drawn until theirs is ready.
+            const unsigned n = std::max(2u, std::min(8u, std::thread::hardware_concurrency() / 2));
             for (unsigned w = 0; w < n; ++w) std::thread([this] { ShaderWorker(); }).detach();
             std::fprintf(stderr, "[renderer] background shader compiling on %u threads\n", n);
         }
@@ -3494,6 +3509,7 @@ void Renderer::Impl::Draw(const Registers& r, const gpu::DrawInfo& draw) {
     } else if (can_defer) {  // built in the background; the draw waits for it
         if (building.try_emplace(pkey_hash, PendingPipe{vmod, pmod, pd}).second)
             QueueShaderJob({0, pkey_hash, {}, gcn::Stage::Vertex, vmod, pmod, pd, {}});
+        wanted_pipes.insert(pkey_hash);
         deferred_draws.fetch_add(1, std::memory_order_relaxed);
         return;
     } else {
@@ -3612,12 +3628,14 @@ bool Renderer::Flip(uint64_t display_address, uint32_t width, uint32_t height) {
     if (impl_->flash_count) impl_->ProbeRecord(display_address, impl_->frame + 1);
     if (!impl_->warm_started) impl_->StartPipelineWarmup();
     impl_->MergeWarmPipelines();
+    impl_->PrioritiseWantedJobs();
     if (impl_->frame % 600 == 0 && impl_->deferred_draws.load(std::memory_order_relaxed)) {
         const uint64_t done = impl_->async_done.exchange(0), wait = impl_->async_wait_ns.exchange(0);
         std::fprintf(stderr, "[shaders] last 600 frames: %llu draws waited for background compiles; %llu jobs done, "
-                     "avg %.0f ms each from queue to ready\n",
+                     "avg %.0f ms each from queue to ready; queue peaked at %zu\n",
                      (unsigned long long)impl_->deferred_draws.exchange(0), (unsigned long long)done,
-                     done ? wait / 1e6 / double(done) : 0.0);
+                     done ? wait / 1e6 / double(done) : 0.0, impl_->queued_peak);
+        impl_->queued_peak = 0;
     }
     impl_->PickCamera();
     if (Impl::UltrawideSqueeze() < 1.0f && !impl_->cam_cur.valid && impl_->disp_any_draws)

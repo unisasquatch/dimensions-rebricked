@@ -52,10 +52,11 @@ void Close() {
     g_closed_at_ms = NowMs();
 }
 
-// --- icon atlas (atlas.bin from port/tools/toypad_icons.py) ---
+// --- icon atlas (atlas.bin, made from the game's files by button_icons.cpp's BuildFigures) ---
 struct Icon { float u0, v0, u1, v1, aspect; };
 struct Atlas {
     bool tried = false;
+    int generation = 0;  // icons::FiguresGeneration() when it was tried
     VkImage image = VK_NULL_HANDLE;
     VkDeviceMemory memory = VK_NULL_HANDLE, staging_memory = VK_NULL_HANDLE;
     VkBuffer staging = VK_NULL_HANDLE;
@@ -89,10 +90,12 @@ void ImageBarrier(VkCommandBuffer cmd, VkImage image, VkImageLayout from, VkImag
 // Loads the atlas and records its upload into `cmd` (outside any rendering).
 void LoadAtlas(VkCommandBuffer cmd) {
     g_atlas.tried = true;
+    g_atlas.generation = icons::FiguresGeneration();
+    g_atlas.icons.clear();
     const std::string path = toypad::Instance().FigureDir() + "/icons/atlas.bin";
     std::ifstream in(path, std::ios::binary);
     if (!in) {
-        std::fprintf(stderr, "[overlay] no icon atlas at %s (run port/tools/toypad_icons.py)\n", path.c_str());
+        std::fprintf(stderr, "[overlay] no icon atlas at %s yet (it is made from the game's files at startup)\n", path.c_str());
         return;
     }
     char magic[4];
@@ -644,6 +647,13 @@ void Record(VkCommandBuffer cmd, VkImageView view, VkExtent2D extent, VkFormat f
     if (!g_context) return;
     if (!g_vulkan) InitVulkan(format);
     if (!g_vulkan) return;
+    // The figure files may be made after the picker first opened (a fresh install's first minute): when they are,
+    // take the new list, and the atlas if there wasn't one.
+    if (const int gen = icons::FiguresGeneration(); gen != g_atlas.generation) {
+        g_state.loaded = false;
+        if (g_atlas.image == VK_NULL_HANDLE) g_atlas.tried = false;
+        else g_atlas.generation = gen;
+    }
     if (!g_atlas.tried && g_panel == Panel::Picker) LoadAtlas(cmd);
     // Keys released while the picker was closed never reached ImGui (it only gets events while open):
     // start each opening with nothing held, or a held Escape/Circle would close it again at once.
